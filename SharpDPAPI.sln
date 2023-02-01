@@ -44,5 +44,6 @@ Global
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		CsSqlite\CsSqlite.projitems*{2aa395f5-702a-4fbb-b0d4-911dadd54d5e}*SharedItemsImports = 13
+		CsSqlite\CsSqlite.projitems*{2f00a05b-263d-4fcc-846b-da82bd684603}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal
