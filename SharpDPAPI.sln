@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpChromeTests", "SharpCh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ctepc", "ctepc\ctepc.csproj", "{673D3045-3819-4F39-8DCC-92760E0F0B67}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "CsSqlite", "CsSqlite\CsSqlite.shproj", "{2AA395F5-702A-4FBB-B0D4-911DADD54D5E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,5 +41,8 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B8D5069A-0CBD-44A9-8D79-A84DFD899B3C}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		CsSqlite\CsSqlite.projitems*{2aa395f5-702a-4fbb-b0d4-911dadd54d5e}*SharedItemsImports = 13
 	EndGlobalSection
 EndGlobal
