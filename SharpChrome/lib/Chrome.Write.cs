@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using SharpChrome.Extensions;
 using SQLite;
@@ -19,9 +20,19 @@ namespace SharpChrome
             Browser browser = Browser.Chrome,
             byte[] newAesStateKey = null)
         {
+            if (browser == Browser.Edge) {
+                var edgeProcesses = Process.GetProcessesByName("msedge");
+                edgeProcesses.TryKillProcesses();
+                edgeProcesses = Process.GetProcessesByName("msedge");
+                if (edgeProcesses.Any()) {
+
+                }
+            }
+
             var dbPath = browser.ResolveLoginDataPath(targetDirectory);
             var uri = new Uri(dbPath);
-            string loginDataFilePathUri = $"{uri.AbsoluteUri}";
+            // string loginDataFilePathUri = $"{uri.AbsoluteUri}";
+            string loginDataFilePathUri = dbPath;
             SQLiteConnection database = null;
 
             List<logins> loginList = logins.ToList();
@@ -40,7 +51,7 @@ namespace SharpChrome
             }
 
             using (database = new SQLiteConnection(loginDataFilePathUri,
-                       SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.OpenUri, false)) {
+                       SQLiteOpenFlags.ReadWrite, false)) {
                 foreach (var login in loginsWithDecryptedPasswords) {
                     database.InsertOrReplace(login);
                 }

@@ -10,7 +10,7 @@ using System.Security.Policy;
 using System.Text;
 using PInvoke;
 using SharpChrome.Extensions;
-using SQLite;
+using CsSQLite;
 
 namespace SharpChrome
 {

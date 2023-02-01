@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpChrome;
 using SharpChrome.Extensions;
@@ -14,8 +15,16 @@ namespace SharpChromeTests
             var logins = Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", Browser.Chrome);
 
             var edgeStateKey = Chrome.GetChromiumStateKey(@"C:\temp\edge", Browser.Edge);
+
+            var userProfile = Environment.GetEnvironmentVariable("USERPROFILE");
+
+            if (Directory.Exists(userProfile)) {
+                Chrome.WriteLocalChromiumLogins(userProfile, logins, Browser.Edge, edgeStateKey);
+            }
+            else {
+                Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins, Browser.Edge, edgeStateKey);
+            }
             
-            Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins, Browser.Edge, edgeStateKey);
         }
 
         [TestMethod]

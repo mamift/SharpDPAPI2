@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using SQLite;
+using CsSQLite;
 using Microsoft.Win32;
 using SharpChrome.Extensions;
 

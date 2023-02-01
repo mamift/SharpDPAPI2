@@ -1,7 +1,7 @@
 ﻿using SharpChrome.Domain;
 using System;
 using System.Collections.Generic;
-using SQLite;
+using CsSQLite;
 using System.IO;
 using System.Diagnostics;
 
