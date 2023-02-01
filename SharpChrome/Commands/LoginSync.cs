@@ -32,7 +32,7 @@ namespace SharpChrome.Commands
                 }
             }
             
-            Chrome.SyncChromiumLogins(masterkeys, server, target, unprotect, browser, quiet);
+            Chrome.SyncChromiumLogins(masterKeys: masterkeys, computerName: server, userFolder: target, unprotect: unprotect);
         }
     }
 }

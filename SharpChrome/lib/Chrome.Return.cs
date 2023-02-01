@@ -16,31 +16,42 @@ namespace SharpChrome
     {
         public static void SyncChromiumLogins(Dictionary<string, string> masterKeys, string computerName = "",
             string userFolder = "", bool unprotect = false,
-            string browser = "chrome", bool quiet = false)
+            Browser fromBrowser = Browser.Chrome, Browser toBrowser = Browser.Edge, bool quiet = false)
         {
-            var userDirectories = GatherUserProfileDirectories(masterKeys, computerName, userFolder, browser, quiet);
+            var userDirectories = GatherUserProfileDirectories(masterKeys, computerName, userFolder, fromBrowser, quiet);
 
+            if (userDirectories.Any(ud => ud.Contains(Environment.GetEnvironmentVariable("USERPROFILE")))) {
+                unprotect = true;
+            }
+
+            const string loginDataPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Login Data";
+            const string localStatePathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Local State";
+            
             foreach (string userDirectory in userDirectories) {
-                //var chromeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Login Data";
-                var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
-                //var chromeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Local State";
-                var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
-
-                //var edgeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Login Data";
-                var edgeLoginDataPath = $@"C:\temp\edge\Login Data";
-                //var edgeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Local State";
-                var edgeAesStateKeyPath = $@"C:\temp\edge\Local State";
+                var chromeLoginDataPath = string.Format(loginDataPathFormattedTemplate, userDirectory, "Google", "Chrome");
+                //var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
+                var chromeAesStateKeyPath = string.Format(localStatePathFormattedTemplate, userDirectory, "Google", "Chrome");
+                //var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
 
                 byte[] chromeAesStateKey = GetStateKey(masterKeys, chromeAesStateKeyPath, unprotect, quiet);
-                byte[] edgeAesStateKey = GetStateKey(masterKeys, edgeAesStateKeyPath, unprotect, quiet);
 
                 var chromeLogins = ParseAndReturnChromeLogins(chromeLoginDataPath, chromeAesStateKey);
+            }
+            
+            foreach (string userDirectory in userDirectories) {
+                var edgeLoginDataPath = string.Format(loginDataPathFormattedTemplate, userDirectory, "Microsoft", "Edge");
+                //var edgeLoginDataPath = $@"C:\temp\edge\Login Data";
+                var edgeAesStateKeyPath = string.Format(localStatePathFormattedTemplate, userDirectory, "Microsoft", "Edge");
+                //var edgeAesStateKeyPath = $@"C:\temp\edge\Local State";
+                
+                byte[] edgeAesStateKey = GetStateKey(masterKeys, edgeAesStateKeyPath, unprotect, quiet);
+                
                 var edgePasswords = ParseAndReturnChromeLogins(edgeLoginDataPath, edgeAesStateKey);
             }
         }
 
         public static List<string> GatherUserProfileDirectories(Dictionary<string, string> masterKeys, string computerName, string userFolder, 
-            string browser, bool quiet, IProgress<string> progress = null)
+            Browser browser, bool quiet, IProgress<string> progress = null)
         {
             // triage all Chromium 'Login Data' files we can reach
             var userDirectories = new List<string>();
@@ -71,7 +82,7 @@ namespace SharpChrome
                     if (masterKeys.Count > 0) {
                         if (!quiet) {
                             progress?.Report(
-                                $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for ALL users\r\n");
+                                $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser.ToString())} Logins for ALL users\r\n");
                         }
 
                         userDirectories = SharpDPAPI.Helpers.GetUserFolders();
@@ -88,7 +99,7 @@ namespace SharpChrome
                     // if we're elevated but not SYSTEM, and no masterkeys are supplied, assume we're triaging just the current user
                     if (!quiet) {
                         progress?.Report(
-                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for current user\r\n");
+                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser.ToString())} Logins for current user\r\n");
                     }
 
                     userDirectories.Add(System.Environment.GetEnvironmentVariable("USERPROFILE"));
@@ -97,7 +108,7 @@ namespace SharpChrome
                     // otherwise we're elevated and have masterkeys supplied, so assume we're triaging all users
                     if (!quiet) {
                         progress?.Report(
-                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for ALL users\r\n");
+                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser.ToString())} Logins for ALL users\r\n");
                     }
 
                     userDirectories = SharpDPAPI.Helpers.GetUserFolders();
@@ -107,7 +118,7 @@ namespace SharpChrome
                 // not elevated, no user folder specified, so triage current user
                 if (!quiet) {
                     progress?.Report(
-                        $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for current user\r\n");
+                        $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser.ToString())} Logins for current user\r\n");
                 }
 
                 userDirectories.Add(System.Environment.GetEnvironmentVariable("USERPROFILE"));
