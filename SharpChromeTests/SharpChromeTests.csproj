@@ -44,8 +44,11 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BaseTester.cs" />
     <Compile Include="PasswordReadingTests.cs" />
+    <Compile Include="PasswordWritingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StateKeyReadingTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SharpChrome\SharpChrome.csproj">

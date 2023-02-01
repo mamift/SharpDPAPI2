@@ -10,6 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using SQLite;
 using Microsoft.Win32;
+using SharpChrome.Extensions;
 
 namespace SharpChrome
 {
@@ -792,6 +793,28 @@ namespace SharpChrome
 
             return null;
 
+        }
+
+        public static byte[] GetChromiumStateKey(string dirOrFilePath, Browser browser = Browser.Chrome)
+        {
+            string stateKeyPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                stateKeyPath = browser.ResolveLoginStatePath(dirOrFilePath);
+            }
+            else {
+                stateKeyPath = dirOrFilePath;
+            }
+
+            string b64StateKey = GetBase64EncryptedKey(stateKeyPath);
+            byte[] stateKey = DecryptBase64StateKey(new Dictionary<string, string>(), b64StateKey, true);
+
+            if (stateKey != null) {
+                if (stateKey.Length != 32) {
+                    throw new InvalidOperationException("Invalid state key length! Expected 32");
+                }
+            }
+
+            return stateKey;
         }
 
         public static byte[] GetStateKey(Dictionary<string, string> MasterKeys, string localStatePath, bool unprotect, bool quiet)

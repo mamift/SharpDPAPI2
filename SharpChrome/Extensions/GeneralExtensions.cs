@@ -52,6 +52,37 @@ namespace SharpChrome.Extensions
             return @string;
         }
 
+        /// <summary>
+        /// Re-encrypt passwords using a given <paramref name="aesStateKey"/>.
+        /// <para>Will encrypt the value for <see cref="logins.DecryptedPasswordValue"/> and update the <see cref="logins.password_value"/>.</para>
+        /// <para>By default will throw an exception if a null value is encountered for <see cref="logins.DecryptedPasswordValue"/>.</para>
+        /// </summary>
+        /// <param name="logins"></param>
+        /// <param name="aesStateKey"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="Exception"></exception>
+        public static List<logins> ReEncryptPasswords(this IEnumerable<logins> logins, byte[] aesStateKey)
+        {
+            if (aesStateKey == null || aesStateKey.Length == default) throw new ArgumentNullException(nameof(aesStateKey));
+            if (aesStateKey.Length != 32) throw new InvalidDataException($"{nameof(aesStateKey)} needs to be exactly 32 in length!");
+            
+            var keyDecryptResult = Chrome.DPAPIChromeAlgKeyFromRaw(aesStateKey, out var hAlg, out var hKey);
+            if (false == keyDecryptResult) throw new Exception("Unable to determine algorithm key!");
+            var loginsList = logins.ToList();
+
+            foreach (var login in loginsList) {
+                BinaryChromePass binaryChromePass = login.ToBinaryChromePass();
+                login.password_value = null;
+                
+                byte[] decBytes = Encoding.ASCII.GetBytes(login.DecryptedPasswordValue);
+                var reEncryptedPassword = Chrome.EncryptAESChromeBlob(decBytes, aesStateKey, binaryChromePass.InitVector, binaryChromePass.Tag);
+                login.password_value = reEncryptedPassword;
+            }
+
+            return loginsList;
+        }
+
         public static List<logins> DecryptPasswords(this IEnumerable<logins> logins, byte[] aesStateKey)
         {
             if (aesStateKey == null || aesStateKey.Length == default) throw new ArgumentNullException(nameof(aesStateKey));
@@ -112,10 +143,10 @@ namespace SharpChrome.Extensions
         public static bool HasV10Header(this byte[] data) => Chrome.HasV10Header(data);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static DateTime FromChromeTimeToDateTime(this double bigIntegerValue) => Helpers.ConvertToDateTime(bigIntegerValue);
+        public static DateTime ToDateTime(this double bigIntegerValue) => Helpers.ConvertToDateTime(bigIntegerValue);
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static double FromDateTimeToChromeTime(this DateTime dateTimeValue) => Helpers.ConvertToChromeTime(dateTimeValue);
+        public static double ToChromeTime(this DateTime dateTimeValue) => Helpers.ConvertToChromeTime(dateTimeValue);
 
         /// <summary>
         /// Concatenates the current array with the <paramref name="otherArray"/>, returning a new array.
@@ -175,6 +206,63 @@ namespace SharpChrome.Extensions
         public static IEnumerable<T> TakeLast<T>(this IEnumerable<T> source, int N)
         {
             return source.Skip(Math.Max(0, source.Count() - N));
+        }
+
+        public static string GetVendorName(this Browser browser)
+        {
+            var browserVendor = browser switch {
+                Browser.BraveBrowser => "BraveSoftware",
+                Browser.Chrome => "Google",
+                Browser.Edge => "Microsoft",
+                _ => throw new ArgumentOutOfRangeException(nameof(browser), browser, null)
+            };
+
+            return browserVendor;
+        }
+
+        public static string GetBrowserName(this Browser browser)
+        {
+            var browserName = browser switch {
+                Browser.BraveBrowser => "Brave-Browser",
+                _ => browser.ToString()
+            };
+
+            return browserName;
+        }
+
+        public static SharpDPAPI.Tuple<string, string> ResolveBrowserAndVendorNamesForUserDataPaths(this Browser browser)
+        {
+            var browserVendor = browser.GetVendorName();
+
+            var browserName = browser.GetBrowserName();
+
+            return new SharpDPAPI.Tuple<string, string>(browserVendor, browserName);
+        }
+        
+        public static string ResolveLoginStatePath(this Browser browser, string directory)
+        {
+            var aesStateKeyPath = string.Format(Chrome.LocalStatePathFormattedTemplate, directory, browser.GetVendorName(), browser.GetBrowserName());
+            if (!File.Exists(aesStateKeyPath)) {
+                aesStateKeyPath = Path.Combine(directory, "Local State");
+                if (!File.Exists(aesStateKeyPath)) {
+                    throw new FileNotFoundException("Cant find browser master key!", aesStateKeyPath);
+                }
+            }
+
+            return aesStateKeyPath;
+        }
+
+        public static string ResolveLoginDataPath(this Browser browser, string directory)
+        {
+            var loginDataPath = string.Format(Chrome.LoginDataPathFormattedTemplate, directory, browser.GetVendorName(), browser.GetBrowserName());
+            if (!File.Exists(loginDataPath)) {
+                loginDataPath = Path.Combine(directory, "Login Data");
+                if (!File.Exists(loginDataPath)) {
+                    throw new FileNotFoundException("Cant find login database!", loginDataPath);
+                }
+            }
+
+            return loginDataPath;
         }
     }
 

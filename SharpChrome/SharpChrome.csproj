@@ -107,6 +107,7 @@
     <Compile Include="lib\Browser.cs" />
     <Compile Include="lib\Chrome.cs" />
     <Compile Include="lib\Chrome.Return.cs" />
+    <Compile Include="lib\Chrome.Write.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SQLite\csharp-sqlite-src\alter_c.cs" />

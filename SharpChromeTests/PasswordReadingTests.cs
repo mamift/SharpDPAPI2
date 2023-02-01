@@ -10,7 +10,7 @@ using SharpChrome.Extensions;
 namespace SharpChromeTests
 {
     [TestClass]
-    public class PasswordReadingTests
+    public class PasswordReadingTests: BaseTester
     {
         [TestMethod]
         public void TestLoginSync()
@@ -37,11 +37,19 @@ namespace SharpChromeTests
         }
 
         [TestMethod]
+        public void TestReadingAndWritingLocalChromiumPasswords()
+        {
+            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", Browser.Chrome);
+            
+            Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins);
+        }
+
+        [TestMethod]
         public void TestReadingLocalChromiumPasswords()
         {
             var browser = Browser.Chrome;
 
-            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", Browser.Chrome);
+            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", browser);
 
             Assert.IsNotNull(logins);
         }

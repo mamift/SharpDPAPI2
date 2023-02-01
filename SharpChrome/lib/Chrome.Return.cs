@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.Remoting.Channels;
 using System.Security.Policy;
 using System.Text;
+using PInvoke;
 using SharpChrome.Extensions;
 using SQLite;
 
@@ -15,6 +16,9 @@ namespace SharpChrome
 {
     internal partial class Chrome
     {
+        public const string LoginDataPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Login Data";
+        public const string LocalStatePathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Local State";
+
         public static void SyncChromiumLogins(Dictionary<string, string> masterKeys, string computerName = "",
             string userFolder = "", bool unprotect = false,
             Browser fromBrowser = Browser.Chrome, Browser toBrowser = Browser.Edge, bool quiet = false)
@@ -61,45 +65,12 @@ namespace SharpChrome
                 unprotect = true;
             }
 
-            const string loginDataPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Login Data";
-            const string localStatePathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Local State";
-
-            var browserVendor = browser switch {
-                Browser.BraveBrowser => "BraveSoftware",
-                Browser.Chrome => "Google",
-                Browser.Edge => "Microsoft",
-                _ => throw new ArgumentOutOfRangeException(nameof(browser), browser, null)
-            };
-
-            var browserName = browser switch {
-                Browser.BraveBrowser => "Brave-Browser",
-                _ => browser.ToString()
-            };
-
-            var loginDataPath = string.Format(loginDataPathFormattedTemplate, directory, browserVendor, browserName);
-            if (!File.Exists(loginDataPath)) {
-                loginDataPath = Path.Combine(directory, "Login Data");
-                if (!File.Exists(loginDataPath)) {
-                    throw new FileNotFoundException("Cant find login database!", loginDataPath);
-                }
-            }
+            var loginDataPath = browser.ResolveLoginDataPath(directory);
             var loginDb = new FileInfo(loginDataPath).CopyTo(Path.GetTempFileName(), true);
-
-            //var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
-            var aesStateKeyPath = string.Format(localStatePathFormattedTemplate, directory, browserVendor, browserName);
-            if (!File.Exists(aesStateKeyPath)) {
-                aesStateKeyPath = Path.Combine(directory, "Local State");
-                if (!File.Exists(aesStateKeyPath)) {
-                    throw new FileNotFoundException("Cant find browser master key!", aesStateKeyPath);
-                }
-                else {
-                    unprotect = true;
-                }
-            }
+            var aesStateKeyPath = browser.ResolveLoginStatePath(directory);
             var aesStateKeyFile = new FileInfo(aesStateKeyPath).CopyTo(Path.GetTempFileName(), true);
-            //var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
 
-            byte[] aesStateKey = GetStateKey(new Dictionary<string, string>(), aesStateKeyFile.FullName, unprotect, quiet);
+            byte[] aesStateKey = GetChromiumStateKey(aesStateKeyPath, browser);
 
             var logins = ParseAndReturnChromeLogins(loginDb.FullName, aesStateKey);
 
@@ -219,6 +190,7 @@ namespace SharpChrome
         public string username_element { get; set; }
         public string username_value { get; set; }
         public string password_element { get; set; }
+        /// <summary>The encrypted password.</summary>
         public byte[] password_value { get; set; }
         public string submit_element { get; set; }
         /// <summary>Required when saving </summary>
@@ -245,7 +217,7 @@ namespace SharpChrome
         /// <summary>Required when saving </summary>
         public double date_password_modified { get; set; }
 
-        public string decrypted_password_value => _decryptedPasswordValue;
+        public string DecryptedPasswordValue => _decryptedPasswordValue;
 
         public void setDecrypted_password_value(string value) => _decryptedPasswordValue = value;
 
@@ -254,8 +226,8 @@ namespace SharpChrome
         public override string ToString()
         {
             var debugStr = $"username = {username_value}, website = {new Uri(origin_url).Host}";
-            if (!string.IsNullOrEmpty(decrypted_password_value)) {
-                debugStr += $", pass = {decrypted_password_value}";
+            if (!string.IsNullOrEmpty(DecryptedPasswordValue)) {
+                debugStr += $", pass = {DecryptedPasswordValue}";
             }
 
             return debugStr;
@@ -306,17 +278,6 @@ namespace SharpChrome
 
             return allLoginsDecryptedPwd;
         }
-        
-        public static void InsertPasswordsIntoDbFile(string loginDataFilePath, IEnumerable<logins> logins)
-        {
-            var uri = new Uri(loginDataFilePath);
-            string loginDataFilePathUri = $"{uri.AbsoluteUri}?nolock=1";
-            SQLiteConnection database = null;
-
-            using (database = new SQLiteConnection(loginDataFilePathUri, SQLiteOpenFlags.ReadWrite, false)) {
-                database.InsertOrReplace(logins);
-            }
-        }
 
         public static byte[] GetSubArraySansV10(byte[] dwData)
         {
@@ -324,6 +285,25 @@ namespace SharpChrome
             Array.Copy(dwData, 3, subArrayNoV10, 0, dwData.Length - DPAPI_CHROME_UNKV10.Length);
 
             return subArrayNoV10;
+        }
+
+        /// <summary>
+        /// Encrypts data for saving inside Chromium's 'Login Data' database file.
+        /// </summary>
+        /// <param name="dataToEncrypt">Data to encrypt</param>
+        /// <param name="aesEncryptionKey"></param>
+        /// <param name="nonce"></param>
+        /// <param name="gcmTag"></param>
+        /// <returns></returns>
+        public static byte[] EncryptAESChromeBlob(byte[] dataToEncrypt, byte[] aesEncryptionKey, byte[] nonce, byte[] gcmTag)
+        {
+            var encrypted = AESGCM.GcmEncrypt(dataToEncrypt, aesEncryptionKey, nonce, gcmTag);
+
+            var v10HeaderAndIv = DPAPI_CHROME_UNKV10.ArrayConcat(nonce);
+            var v10HeaderAndIvAndEncryptedData = v10HeaderAndIv.ArrayConcat(encrypted);
+            var v10HeaderAndIvAndEncryptedDataAndTag = v10HeaderAndIvAndEncryptedData.ArrayConcat(gcmTag);
+                
+            return v10HeaderAndIvAndEncryptedDataAndTag;
         }
 
         /// <summary>
