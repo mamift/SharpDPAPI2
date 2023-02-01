@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using SharpChrome.Commands;
 using SharpChrome.Extensions;
 
-namespace UnitTestProject1
+namespace SharpChromeTests
 {
     [TestClass]
     public class UnitTest1

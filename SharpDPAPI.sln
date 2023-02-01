@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpDPAPI", "SharpDPAPI\Sh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpChrome", "SharpChrome\SharpChrome.csproj", "{2F00A05B-263D-4FCC-846B-DA82BD684603}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{C63D666B-50E6-43B5-ACE3-A473F580BACC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpChromeTests", "SharpChromeTests\SharpChromeTests.csproj", "{C63D666B-50E6-43B5-ACE3-A473F580BACC}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ctepc", "ctepc\ctepc.csproj", "{673D3045-3819-4F39-8DCC-92760E0F0B67}"
 EndProject
