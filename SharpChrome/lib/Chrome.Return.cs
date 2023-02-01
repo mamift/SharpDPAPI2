@@ -14,7 +14,7 @@ namespace SharpChrome
 {
     internal partial class Chrome
     {
-        public static void TriageAndReturnChromeLogins(Dictionary<string, string> masterKeys, string computerName = "",
+        public static void SyncChromiumLogins(Dictionary<string, string> masterKeys, string computerName = "",
             string userFolder = "",
             string displayFormat = "table", bool showAll = false, bool unprotect = false, string stateKey = "",
             string browser = "chrome", bool quiet = false)
