@@ -3,13 +3,14 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using SharpChrome;
 using SharpChrome.Commands;
 using SharpChrome.Extensions;
 
 namespace SharpChromeTests
 {
     [TestClass]
-    public class UnitTest1
+    public class PasswordReadingTests
     {
         [TestMethod]
         public void TestLoginSync()
@@ -33,6 +34,16 @@ namespace SharpChromeTests
         {
             throw new NotSupportedException();
             SharpChrome.Program.Main(new [] { "logins", "/format:csv", "/browser:chrome" });
+        }
+
+        [TestMethod]
+        public void TestReadingLocalChromiumPasswords()
+        {
+            var browser = Browser.Chrome;
+
+            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", Browser.Chrome);
+
+            Assert.IsNotNull(logins);
         }
     }
 }

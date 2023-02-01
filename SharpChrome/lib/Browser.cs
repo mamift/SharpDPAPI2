@@ -7,6 +7,6 @@ namespace SharpChrome
     {
         Chrome = 0,
         Edge = 1,
-        Brave = 2,
+        BraveBrowser = 2,
     }
 }

@@ -38,3 +38,4 @@ using System.Runtime.InteropServices;
 [assembly: NeutralResourcesLanguage("en-AU")]
 
 [assembly: InternalsVisibleTo("ctepc", AllInternalsVisible = true)]
+[assembly: InternalsVisibleTo("SharpChromeTests", AllInternalsVisible = true)]

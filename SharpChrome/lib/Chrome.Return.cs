@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Channels;
 using System.Security.Policy;
 using System.Text;
 using SharpChrome.Extensions;
@@ -18,7 +19,7 @@ namespace SharpChrome
             string userFolder = "", bool unprotect = false,
             Browser fromBrowser = Browser.Chrome, Browser toBrowser = Browser.Edge, bool quiet = false)
         {
-            var userDirectories = GatherUserProfileDirectories(masterKeys, computerName, userFolder, fromBrowser, quiet);
+            var userDirectories = GatherUserProfileDirectories(computerName, userFolder, fromBrowser, quiet, masterKeys);
 
             if (userDirectories.Any(ud => ud.Contains(Environment.GetEnvironmentVariable("USERPROFILE")))) {
                 unprotect = true;
@@ -29,13 +30,16 @@ namespace SharpChrome
             
             foreach (string userDirectory in userDirectories) {
                 var chromeLoginDataPath = string.Format(loginDataPathFormattedTemplate, userDirectory, "Google", "Chrome");
+                var chromeLoginDb = new FileInfo(chromeLoginDataPath).CopyTo(Path.GetTempFileName(), true);
+
                 //var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
                 var chromeAesStateKeyPath = string.Format(localStatePathFormattedTemplate, userDirectory, "Google", "Chrome");
+                var chromeAesStateKeyFile = new FileInfo(chromeAesStateKeyPath).CopyTo(Path.GetTempFileName(), true);
                 //var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
 
-                byte[] chromeAesStateKey = GetStateKey(masterKeys, chromeAesStateKeyPath, unprotect, quiet);
+                byte[] chromeAesStateKey = GetStateKey(masterKeys, chromeAesStateKeyFile.FullName, unprotect, quiet);
 
-                var chromeLogins = ParseAndReturnChromeLogins(chromeLoginDataPath, chromeAesStateKey);
+                var chromeLogins = ParseAndReturnChromeLogins(chromeLoginDb.FullName, chromeAesStateKey);
             }
             
             foreach (string userDirectory in userDirectories) {
@@ -50,9 +54,62 @@ namespace SharpChrome
             }
         }
 
-        public static List<string> GatherUserProfileDirectories(Dictionary<string, string> masterKeys, string computerName, string userFolder, 
-            Browser browser, bool quiet, IProgress<string> progress = null)
+        public static List<logins> ReadLocalChromiumLogins(string directory, Browser browser, bool unprotect = false, 
+            bool quiet = false)
         {
+            if (directory.Contains(Environment.GetEnvironmentVariable("USERPROFILE"))) {
+                unprotect = true;
+            }
+
+            const string loginDataPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Login Data";
+            const string localStatePathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Local State";
+
+            var browserVendor = browser switch {
+                Browser.BraveBrowser => "BraveSoftware",
+                Browser.Chrome => "Google",
+                Browser.Edge => "Microsoft",
+                _ => throw new ArgumentOutOfRangeException(nameof(browser), browser, null)
+            };
+
+            var browserName = browser switch {
+                Browser.BraveBrowser => "Brave-Browser",
+                _ => browser.ToString()
+            };
+
+            var loginDataPath = string.Format(loginDataPathFormattedTemplate, directory, browserVendor, browserName);
+            if (!File.Exists(loginDataPath)) {
+                loginDataPath = Path.Combine(directory, "Login Data");
+                if (!File.Exists(loginDataPath)) {
+                    throw new FileNotFoundException("Cant find login database!", loginDataPath);
+                }
+            }
+            var loginDb = new FileInfo(loginDataPath).CopyTo(Path.GetTempFileName(), true);
+
+            //var chromeLoginDataPath = $@"C:\temp\chrome\Login Data";
+            var aesStateKeyPath = string.Format(localStatePathFormattedTemplate, directory, browserVendor, browserName);
+            if (!File.Exists(aesStateKeyPath)) {
+                aesStateKeyPath = Path.Combine(directory, "Local State");
+                if (!File.Exists(aesStateKeyPath)) {
+                    throw new FileNotFoundException("Cant find browser master key!", aesStateKeyPath);
+                }
+                else {
+                    unprotect = true;
+                }
+            }
+            var aesStateKeyFile = new FileInfo(aesStateKeyPath).CopyTo(Path.GetTempFileName(), true);
+            //var chromeAesStateKeyPath = $@"C:\temp\chrome\Local State";
+
+            byte[] aesStateKey = GetStateKey(new Dictionary<string, string>(), aesStateKeyFile.FullName, unprotect, quiet);
+
+            var logins = ParseAndReturnChromeLogins(loginDb.FullName, aesStateKey);
+
+            return logins;
+        }
+
+        public static List<string> GatherUserProfileDirectories(string computerName, string userFolder,
+            Browser browser, bool quiet, Dictionary<string, string> masterKeys = null, IProgress<string> progress = null)
+        {
+            if (masterKeys == null) masterKeys = new Dictionary<string, string>();
             // triage all Chromium 'Login Data' files we can reach
             var userDirectories = new List<string>();
 
