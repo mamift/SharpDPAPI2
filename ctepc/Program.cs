@@ -18,12 +18,13 @@ namespace ctepc
         }
     }
 
-    internal static class Program
+    internal static partial class Program
     {
         static void Main(string[] args)
         {
             var progressReporter = new ProgressReporter();
 
+            #if FAKES
             if (args.Contains("fake") || args.Contains("test")) {
                 Console.WriteLine("Running test on fake data...");
 
@@ -31,21 +32,10 @@ namespace ctepc
 
                 return;
             }
+            #endif
             
             Console.WriteLine($"Syncing passwords from chrome to edge...");
             SyncPasswordsFromChromeToEdge(progress: progressReporter);
-        }
-
-        private static void InstallFakes(IProgress<string> progress = null)
-        {
-            var fakes = Fakes.FakeLogins(Browser.Chrome).ToList();
-
-            var userDir = Environment.GetEnvironmentVariable("USERPROFILE");
-
-            var targetBrowser = Browser.Edge;
-            var edgeKey = Chrome.GetChromiumStateKey(userDir, targetBrowser);
-            
-            Chrome.WriteLocalChromiumLogins(userDir, fakes, edgeKey, targetBrowser, progress);
         }
 
         static void SyncPasswordsFromChromeToEdge(IProgress<string> progress = null)
