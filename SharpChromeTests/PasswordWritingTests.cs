@@ -19,10 +19,10 @@ namespace SharpChromeTests
             var userProfile = Environment.GetEnvironmentVariable("USERPROFILE");
 
             if (Directory.Exists(userProfile)) {
-                Chrome.WriteLocalChromiumLogins(userProfile, logins, Browser.Edge, edgeStateKey);
+                Chrome.WriteLocalChromiumLogins(userProfile, logins, edgeStateKey, Browser.Edge);
             }
             else {
-                Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins, Browser.Edge, edgeStateKey);
+                Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins, edgeStateKey, Browser.Edge);
             }
             
         }

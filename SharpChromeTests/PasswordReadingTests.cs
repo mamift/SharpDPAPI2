@@ -39,9 +39,12 @@ namespace SharpChromeTests
         [TestMethod]
         public void TestReadingAndWritingLocalChromiumPasswords()
         {
-            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(@"C:\temp\chrome", Browser.Chrome);
-            
-            Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins);
+            var cTempChrome = @"C:\temp\chrome";
+            var browser = Browser.Chrome;
+            var logins = SharpChrome.Chrome.ReadLocalChromiumLogins(cTempChrome, browser);
+
+            var key = Chrome.GetChromiumStateKey(cTempChrome, browser);
+            Chrome.WriteLocalChromiumLogins(@"C:\temp\edge", logins, key);
         }
 
         [TestMethod]

