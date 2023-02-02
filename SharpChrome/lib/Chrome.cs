@@ -7,21 +7,28 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using SQLite;
+using CsSQLite;
 using Microsoft.Win32;
+using SharpChrome.Extensions;
 
 namespace SharpChrome
 {
-    class Chrome
+    internal partial class Chrome
     {
         internal static byte[] DPAPI_HEADER = UTF8Encoding.UTF8.GetBytes("DPAPI");
         internal static byte[] DPAPI_CHROME_UNKV10 = UTF8Encoding.UTF8.GetBytes("v10");
         internal const int AES_BLOCK_SIZE = 16;
+        internal const int GCM_INITIALIZATION_VECTOR_SIZE = 12;
 
         // approach adapted from @djhohnstein's https://github.com/djhohnstein/SharpChrome/ project
         //  but using this CSHARP-SQLITE version https://github.com/akveo/digitsquare/tree/a251a1220ef6212d1bed8c720368435ee1bfdfc2/plugins/com.brodysoft.sqlitePlugin/src/wp
-        public static void TriageChromeLogins(Dictionary<string, string> MasterKeys, string computerName = "", string userFolder = "", string displayFormat = "table", bool showAll = false, bool unprotect = false, string stateKey = "", string browser = "chrome", bool quiet = false)
+
+        // approach adapted from @djhohnstein's https://github.com/djhohnstein/SharpChrome/ project
+        //  but using this CSHARP-SQLITE version https://github.com/akveo/digitsquare/tree/a251a1220ef6212d1bed8c720368435ee1bfdfc2/plugins/com.brodysoft.sqlitePlugin/src/wp
+        public static void TriageChromeLogins(Dictionary<string, string> MasterKeys, string computerName = "", string userFolder = "", 
+            string displayFormat = "table", bool showAll = false, bool unprotect = false, string stateKey = "", string browser = "chrome", bool quiet = false)
         {
             // triage all Chromium 'Login Data' files we can reach
 
@@ -432,7 +439,7 @@ namespace SharpChrome
                     if (aesStateKey != null)
                     {
                         // using the new DPAPI decryption method
-                        decBytes = DecryptAESChromeBlob(passwordBytes, hAlg, hKey);
+                        decBytes = DecryptAESChromeBlob(passwordBytes, hAlg, hKey, out _);
 
                         if (decBytes == null)
                         {
@@ -567,7 +574,7 @@ namespace SharpChrome
                         if (aesStateKey != null)
                         {
                             // using the new DPAPI decryption method
-                            decBytes = DecryptAESChromeBlob(valueBytes, hAlg, hKey);
+                            decBytes = DecryptAESChromeBlob(valueBytes, hAlg, hKey, out _);
 
                             if (decBytes == null)
                             {
@@ -789,6 +796,84 @@ namespace SharpChrome
 
         }
 
+        public static void SetChromiumBookmarks(string dirOrFilePath, JsonObject incomingBookmarksJson,
+            Browser targetBrowser = Browser.Chrome, IProgress<string> progress = null)
+        {
+            string targetBookmarksPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                targetBookmarksPath = targetBrowser.ResolveBookmarksFilePath(dirOrFilePath);
+            }
+            else {
+                targetBookmarksPath = dirOrFilePath;
+            }
+            
+            progress?.Report($"Setting bookmarks to target browser: {targetBrowser.GetFullVendorAndBrowserName()}");
+            var targetBookmarksJson = JsonObject.Parse(File.ReadAllText(targetBookmarksPath));
+
+            var incomingRoots = incomingBookmarksJson["roots"].AsObject();
+            var bookmarkBarName = "bookmark_bar";
+            var otherName = "other";
+
+            var incomingBookmarksBar = incomingRoots[bookmarkBarName].AsObject();
+            var incomingOther = incomingRoots[otherName].AsObject();
+
+            incomingRoots.Remove(bookmarkBarName);
+            incomingRoots.Remove(otherName);
+
+            var targetRoots = targetBookmarksJson["roots"].AsObject();
+
+            targetRoots[bookmarkBarName] = null;
+            targetRoots[bookmarkBarName] = incomingBookmarksBar;
+            
+            targetRoots[otherName] = null;
+            targetRoots[otherName] = incomingOther;
+
+            var updatedBookmarksJsonStr = targetBookmarksJson.ToJsonString();
+
+            File.WriteAllText(targetBookmarksPath, updatedBookmarksJsonStr);
+            progress?.Report("Wrote bookmarks to " + targetBookmarksPath);
+        }
+
+        public static JsonObject GetChromiumBookmarks(string dirOrFilePath, Browser fromBrowser = Browser.Chrome,
+            IProgress<string> progress = null)
+        {
+            string bookmarksPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                bookmarksPath = fromBrowser.ResolveBookmarksFilePath(dirOrFilePath);
+            }
+            else {
+                bookmarksPath = dirOrFilePath;
+            }
+
+            progress?.Report($"Reading bookmarks ({fromBrowser.GetFullVendorAndBrowserName()}) from '{bookmarksPath}'");
+
+            var bookmarksJson = File.ReadAllText(bookmarksPath);
+
+            return JsonObject.Parse(bookmarksJson).AsObject();
+        }
+
+        public static byte[] GetChromiumStateKey(string dirOrFilePath, Browser browser = Browser.Chrome)
+        {
+            string stateKeyPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                stateKeyPath = browser.ResolveLoginStatePath(dirOrFilePath);
+            }
+            else {
+                stateKeyPath = dirOrFilePath;
+            }
+
+            string b64StateKey = GetBase64EncryptedKey(stateKeyPath);
+            byte[] stateKey = DecryptBase64StateKey(new Dictionary<string, string>(), b64StateKey, true);
+
+            if (stateKey != null) {
+                if (stateKey.Length != 32) {
+                    throw new InvalidOperationException("Invalid state key length! Expected 32");
+                }
+            }
+
+            return stateKey;
+        }
+
         public static byte[] GetStateKey(Dictionary<string, string> MasterKeys, string localStatePath, bool unprotect, bool quiet)
         {
             // gets the base64 version of the encrypted state key
@@ -863,7 +948,8 @@ namespace SharpChrome
 
         // adapted from https://github.com/djhohnstein/SharpChrome/blob/e287334c0592abb02bf4f45ada23fecaa0052d48/ChromeCredentialManager.cs#L136-L197
         // god bless you Dwight for figuring this out lol
-        public static byte[] DecryptAESChromeBlob(byte[] dwData, BCrypt.SafeAlgorithmHandle hAlg, BCrypt.SafeKeyHandle hKey)
+        public static byte[] DecryptAESChromeBlob(byte[] dwData, BCrypt.SafeAlgorithmHandle hAlg, BCrypt.SafeKeyHandle hKey, 
+            out byte[] iv)
         {
             // magic decryption happens here
 
@@ -874,6 +960,11 @@ namespace SharpChrome
             uint ntStatus;
             byte[] subArrayNoV10;
             int pcbResult = 0;
+
+            #region Copy IV
+            iv = new byte[12];
+            Array.Copy(dwData, 3, iv, 0, 12);
+            #endregion
 
             unsafe
             {
