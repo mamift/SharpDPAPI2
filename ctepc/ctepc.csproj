@@ -67,6 +67,9 @@
     <PackageReference Include="Bogus" Condition="'$(Configuration)'=='DEBUG'">
       <Version>34.0.2</Version>
     </PackageReference>
+    <PackageReference Include="Costura.Fody">
+      <Version>3.3.3</Version>
+    </PackageReference>
     <PackageReference Include="PolySharp">
       <Version>1.12.1</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
