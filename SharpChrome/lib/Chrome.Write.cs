@@ -41,6 +41,7 @@ namespace SharpChrome
 
             var dbPath = browser.ResolveLoginDataPath(targetDirectory);
             if (!File.Exists(dbPath)) throw new FileNotFoundException("DB 'Login Data' file does not exist!", dbPath);
+            progress?.Report($"Writing to: {dbPath}...");
 
             var uri = new Uri(dbPath);
             // string loginDataFilePathUri = $"{uri.AbsoluteUri}";
@@ -60,9 +61,20 @@ namespace SharpChrome
 
             loginsWithDecryptedPasswords = loginsWithDecryptedPasswords.ReEncryptPasswords(newAesStateKey);
 
-            progress?.Report($"Writing {loginsWithDecryptedPasswords.Count} logins to {browser.GetBrowserName()}");
+            progress?.Report($"Writing {loginsWithDecryptedPasswords.Count} usable logins to {browser.GetBrowserName()}");
 
-            using (database = new SQLiteConnection(loginDataFilePathUri, SQLiteOpenFlags.ReadWrite, false)) {
+            var sqLiteConnectionString = new SQLiteConnectionString(dbPath, SQLiteOpenFlags.ReadWrite, false);
+
+            try {
+                database = new SQLiteConnection(loginDataFilePathUri, SQLiteOpenFlags.ReadWrite, false);
+            }
+            catch (TypeInitializationException tie) {
+                var theConnectionString = sqLiteConnectionString.ToString();
+                database = new SQLiteConnection(theConnectionString, SQLiteOpenFlags.ReadWrite,
+                    false);
+            }
+
+            using (database) {
                 foreach (var login in loginsWithDecryptedPasswords) {
                     var r = database.InsertOrReplace(login);
 

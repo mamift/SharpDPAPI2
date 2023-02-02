@@ -310,6 +310,26 @@ namespace SharpChrome
         /// <returns></returns>
         public static byte[] EncryptAESChromeBlob(byte[] dataToEncrypt, byte[] aesEncryptionKey, byte[] nonce, byte[] gcmTag)
         {
+            if (nonce == null || nonce.Length == 0) {
+                byte[] newIv = new byte[GCM_INITIALIZATION_VECTOR_SIZE];
+                Random random = new Random();
+                for (int i = 0; i < GCM_INITIALIZATION_VECTOR_SIZE; i++) {
+                    random.NextBytes(newIv);
+                }
+
+                nonce = newIv;
+            }
+
+            if (gcmTag == null || gcmTag.Length == 0) {
+                byte[] newTag = new byte[AES_BLOCK_SIZE];
+                Random random = new Random();
+                for (int i = 0; i < AES_BLOCK_SIZE; i++) {
+                    random.NextBytes(newTag);
+                }
+
+                gcmTag = newTag;
+            }
+            
             var encrypted = AESGCM.GcmEncrypt(dataToEncrypt, aesEncryptionKey, nonce, gcmTag);
 
             var v10HeaderAndIv = DPAPI_CHROME_UNKV10.ArrayConcat(nonce);

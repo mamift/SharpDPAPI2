@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Bogus;
 using SharpChrome;
 using SharpChrome.Extensions;
-using Spectre.Console;
 
 namespace ctepc
 {
@@ -15,7 +14,7 @@ namespace ctepc
     {
         public void Report(string value)
         {
-            AnsiConsole.WriteLine(value);
+            Console.WriteLine(value);
         }
     }
 
@@ -23,21 +22,21 @@ namespace ctepc
     {
         static void Main(string[] args)
         {
-            if (args.Contains("fake") || args.Contains("test")) {
-                AnsiConsole.WriteLine("Running test on fake data...");
+            var progressReporter = new ProgressReporter();
 
-                InstallFakes();
+            if (args.Contains("fake") || args.Contains("test")) {
+                Console.WriteLine("Running test on fake data...");
+
+                InstallFakes(progressReporter);
 
                 return;
             }
-
-            var progressReporter = new ProgressReporter();
-
-            AnsiConsole.WriteLine($"Syncing passwords from chrome to edge...");
+            
+            Console.WriteLine($"Syncing passwords from chrome to edge...");
             SyncPasswordsFromChromeToEdge(progress: progressReporter);
         }
 
-        private static void InstallFakes()
+        private static void InstallFakes(IProgress<string> progress = null)
         {
             var fakes = Fakes.FakeLogins(Browser.Chrome).ToList();
 
@@ -46,7 +45,7 @@ namespace ctepc
             var targetBrowser = Browser.Edge;
             var edgeKey = Chrome.GetChromiumStateKey(userDir, targetBrowser);
             
-            Chrome.WriteLocalChromiumLogins(userDir, fakes, edgeKey, targetBrowser);
+            Chrome.WriteLocalChromiumLogins(userDir, fakes, edgeKey, targetBrowser, progress);
         }
 
         static void SyncPasswordsFromChromeToEdge(IProgress<string> progress = null)

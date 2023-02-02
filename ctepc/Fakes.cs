@@ -30,7 +30,7 @@ namespace ctepc
                 var originUrl = faker.Internet.Url();
                 var randomPassVal = faker.Random.String2(32);
                 var encryptedPassBytes =
-                    Chrome.EncryptAESChromeBlob(Encoding.UTF8.GetBytes(randomPassVal), aesEncryptKey, iv, tag);
+                    Chrome.EncryptAESChromeBlob(Encoding.UTF8.GetBytes(randomPassVal), aesEncryptKey, null, tag);
 
                 var login = new logins() {
                     origin_url = originUrl,
