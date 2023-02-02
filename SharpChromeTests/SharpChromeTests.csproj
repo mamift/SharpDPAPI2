@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseTester.cs" />
+    <Compile Include="BookmarksTests.cs" />
     <Compile Include="Fakes.cs" />
     <Compile Include="FakeTests.cs" />
     <Compile Include="PasswordReadingTests.cs" />

@@ -129,6 +129,9 @@
     <PackageReference Include="SQLitePCLRaw.bundle_green">
       <Version>2.0.4</Version>
     </PackageReference>
+    <PackageReference Include="System.Text.Json">
+      <Version>7.0.1</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="..\CsSqlite\CsSqlite.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

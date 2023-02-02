@@ -221,6 +221,11 @@ namespace SharpChrome.Extensions
             return browserVendor;
         }
 
+        public static string GetFullVendorAndBrowserName(this Browser browser)
+        {
+            return $"{browser.GetVendorName()} {browser.GetBrowserName()}";
+        }
+
         public static string GetBrowserName(this Browser browser)
         {
             var browserName = browser switch {
@@ -238,6 +243,19 @@ namespace SharpChrome.Extensions
             var browserName = browser.GetBrowserName();
 
             return new SharpDPAPI.Tuple<string, string>(browserVendor, browserName);
+        }
+        
+        public static string ResolveBookmarksFilePath(this Browser browser, string directory)
+        {
+            var aesStateKeyPath = string.Format(Chrome.BookmarksPathFormattedTemplate, directory, browser.GetVendorName(), browser.GetBrowserName());
+            if (!File.Exists(aesStateKeyPath)) {
+                aesStateKeyPath = Path.Combine(directory, "Local State");
+                if (!File.Exists(aesStateKeyPath)) {
+                    throw new FileNotFoundException("Cant find browser book marks!", aesStateKeyPath);
+                }
+            }
+
+            return aesStateKeyPath;
         }
         
         public static string ResolveLoginStatePath(this Browser browser, string directory)

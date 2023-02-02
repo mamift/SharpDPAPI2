@@ -19,6 +19,7 @@ namespace SharpChrome
     {
         public const string LoginDataPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Login Data";
         public const string LocalStatePathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Local State";
+        public const string BookmarksPathFormattedTemplate = "{0}\\AppData\\Local\\{1}\\{2}\\User Data\\Default\\Bookmarks";
 
         public static void SyncChromiumLogins(Dictionary<string, string> masterKeys, string computerName = "",
             string userFolder = "", bool unprotect = false,

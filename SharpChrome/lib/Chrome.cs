@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using CsSQLite;
 using Microsoft.Win32;
@@ -793,6 +794,62 @@ namespace SharpChrome
 
             return null;
 
+        }
+
+        public static void SetChromiumBookmarks(string dirOrFilePath, JsonObject incomingBookmarksJson,
+            Browser targetBrowser = Browser.Chrome, IProgress<string> progress = null)
+        {
+            string targetBookmarksPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                targetBookmarksPath = targetBrowser.ResolveBookmarksFilePath(dirOrFilePath);
+            }
+            else {
+                targetBookmarksPath = dirOrFilePath;
+            }
+            
+            progress?.Report($"Setting bookmarks to target browser: {targetBrowser.GetFullVendorAndBrowserName()}");
+            var targetBookmarksJson = JsonObject.Parse(File.ReadAllText(targetBookmarksPath));
+
+            var incomingRoots = incomingBookmarksJson["roots"].AsObject();
+            var bookmarkBarName = "bookmark_bar";
+            var otherName = "other";
+
+            var incomingBookmarksBar = incomingRoots[bookmarkBarName].AsObject();
+            var incomingOther = incomingRoots[otherName].AsObject();
+
+            incomingRoots.Remove(bookmarkBarName);
+            incomingRoots.Remove(otherName);
+
+            var targetRoots = targetBookmarksJson["roots"].AsObject();
+
+            targetRoots[bookmarkBarName] = null;
+            targetRoots[bookmarkBarName] = incomingBookmarksBar;
+            
+            targetRoots[otherName] = null;
+            targetRoots[otherName] = incomingOther;
+
+            var updatedBookmarksJsonStr = targetBookmarksJson.ToJsonString();
+
+            File.WriteAllText(targetBookmarksPath, updatedBookmarksJsonStr);
+            progress?.Report("Wrote bookmarks to " + targetBookmarksPath);
+        }
+
+        public static JsonObject GetChromiumBookmarks(string dirOrFilePath, Browser fromBrowser = Browser.Chrome,
+            IProgress<string> progress = null)
+        {
+            string bookmarksPath;
+            if (Directory.Exists(dirOrFilePath)) {
+                bookmarksPath = fromBrowser.ResolveBookmarksFilePath(dirOrFilePath);
+            }
+            else {
+                bookmarksPath = dirOrFilePath;
+            }
+
+            progress?.Report($"Reading bookmarks ({fromBrowser.GetFullVendorAndBrowserName()}) from '{bookmarksPath}'");
+
+            var bookmarksJson = File.ReadAllText(bookmarksPath);
+
+            return JsonObject.Parse(bookmarksJson).AsObject();
         }
 
         public static byte[] GetChromiumStateKey(string dirOrFilePath, Browser browser = Browser.Chrome)

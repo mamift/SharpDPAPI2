@@ -23,6 +23,7 @@ namespace ctepc
         static void Main(string[] args)
         {
             var progressReporter = new ProgressReporter();
+            Console.WriteLine($"NOTE: Running this multiple times may override data. Only supports copying from Chrome to Edge, and not vice versa.");
 
             #if FAKES
             if (args.Contains("fake") || args.Contains("test")) {
@@ -34,17 +35,28 @@ namespace ctepc
             }
             #endif
             
-            Console.WriteLine($"Syncing passwords from chrome to edge...");
-            SyncPasswordsFromChromeToEdge(progress: progressReporter);
+            Console.WriteLine($"Copying passwords from chrome to edge...");
+            CopyPasswordsFromChromeToEdge(progress: progressReporter);
+
+            Console.WriteLine($"Copying bookmarks from chrome to edge...");
+            CopyBookmarksFromChromeToEdge(progressReporter);
         }
 
-        static void SyncPasswordsFromChromeToEdge(IProgress<string> progress = null)
+        static void CopyPasswordsFromChromeToEdge(IProgress<string> progress = null)
         {
             var userProfile = Environment.GetEnvironmentVariable("USERPROFILE");
             var chromiumLogins = Chrome.ReadLocalChromiumLogins(userProfile, Browser.Chrome, progress);
             var edgeStateKey = Chrome.GetChromiumStateKey(userProfile, Browser.Edge);
             
             Chrome.WriteLocalChromiumLogins(userProfile, chromiumLogins, edgeStateKey, Browser.Edge, progress);
+        }
+
+        static void CopyBookmarksFromChromeToEdge(IProgress<string> progress = null)
+        {
+            var userDir = Environment.GetEnvironmentVariable("USERPROFILE");
+            var chromiumBookmarks = SharpChrome.Chrome.GetChromiumBookmarks(userDir, Browser.Chrome, progress);
+            
+            Chrome.SetChromiumBookmarks(userDir, chromiumBookmarks, Browser.Edge, progress);
         }
     }
 }
