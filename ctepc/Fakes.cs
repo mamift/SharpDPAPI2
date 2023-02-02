@@ -29,19 +29,20 @@ namespace ctepc
             foreach (var iteration in Enumerable.Range(0, fakeLoginsLimit)) {
                 var originUrl = faker.Internet.Url();
                 var randomPassVal = faker.Random.String2(32);
-                var encryptedPassBytes =
-                    Chrome.EncryptAESChromeBlob(Encoding.UTF8.GetBytes(randomPassVal), aesEncryptKey, null, tag);
+                //var encryptedPassBytes =
+                //    Chrome.EncryptAESChromeBlob(Encoding.UTF8.GetBytes(randomPassVal), aesEncryptKey, null, null);
 
                 var login = new logins() {
                     origin_url = originUrl,
-                    signon_realm = originUrl,
+                    action_url = originUrl,
+                    signon_realm = new Uri(originUrl).GetLeftPart(UriPartial.Authority),
                     date_created = faker.Random.Double(fakeFloorDate, fakeCeilingDate),
                     blacklisted_by_user = Convert.ToInt16(faker.Random.Bool()),
                     //scheme = faker.Random.UShort(0, 3),
                     scheme = default,
-                    date_last_used = faker.Random.Double(fakeFloorDate, fakeCeilingDate),
+                    date_last_used = 0,
                     date_password_modified = faker.Random.Double(fakeFloorDate, fakeCeilingDate),
-                    password_value = encryptedPassBytes,
+                    //password_value = encryptedPassBytes,
                     username_value = faker.Person.UserName,
                 };
 

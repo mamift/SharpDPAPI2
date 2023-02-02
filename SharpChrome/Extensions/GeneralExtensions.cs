@@ -77,7 +77,7 @@ namespace SharpChrome.Extensions
                 login.password_value = null;
                 
                 byte[] decBytes = Encoding.ASCII.GetBytes(login.DecryptedPasswordValue);
-                var reEncryptedPassword = Chrome.EncryptAESChromeBlob(decBytes, aesStateKey, binaryChromePass.InitVector, binaryChromePass.Tag);
+                var reEncryptedPassword = Chrome.EncryptAESChromeBlob(decBytes, aesStateKey, binaryChromePass?.InitVector, binaryChromePass?.Tag);
                 login.password_value = reEncryptedPassword;
             }
 
